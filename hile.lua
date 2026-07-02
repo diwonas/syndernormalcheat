@@ -4,21 +4,22 @@ local Window = Rayfield:CreateWindow({
    Name = "Synder Cheat",
    LoadingTitle = "Yükleniyor...",
    LoadingSubtitle = "by Diwonas",
-   ConfigurationSaving = {
-      Enabled = false
-   }
+   ConfigurationSaving = { Enabled = false }
 })
 
 local CombatTab = Window:CreateTab("Combat", 4483345998)
 
-local AimbotEnabled = false
+-- DEĞİŞKENLER
+local SilentAimEnabled = false
 local HitboxEnabled = false
 local HitboxSize = 2
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
+-- EN YAKIN DÜŞMANI BULAN FONKSİYON
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
@@ -26,7 +27,8 @@ local function getClosestPlayer()
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local pos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
             if onScreen then
-                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                -- Fare imlecine en yakın olan oyuncuyu bulur
+                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
                 if distance < shortestDistance then
                     closestPlayer = player
                     shortestDistance = distance
@@ -37,15 +39,46 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-game:GetService("RunService").RenderStepped:Connect(function()
-    if AimbotEnabled then
-        local target = getClosestPlayer()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
+-- SILENT AIM KANCASI (HOOK)
+-- Oyunun fare hedefi algıladığı metotları arkada değiştirir
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", function(Self, ...)
+    local Args = {...}
+    local Method = getnamecallmethod()
+    
+    if SilentAimEnabled and not checkcaller() then
+        -- Silahların ateş ederken kullandığı yaygın fonksiyon adları
+        if Method == "FindPartOnRayWithIgnoreList" or Method == "FindPartOnRayWithWhitelist" or Method == "Raycast" then
+            local Target = getClosestPlayer()
+            if Target and Target.Character and Target.Character:FindFirstChild("HumanoidRootPart") then
+                -- Merminin gideceği yönü doğrudan en yakın düşmanın gövdesine odaklar
+                local TargetPos = Target.Character.HumanoidRootPart.Position
+                local Origin = Args[1].Origin
+                Args[1] = Ray.new(Origin, (TargetPos - Origin).Unit * 5000)
+                return OldNamecall(Self, unpack(Args))
+            end
         end
     end
+    return OldNamecall(Self, ...)
 end)
 
+-- Oyunun Mouse.Hit (Tıklanan Yer) özelliğini manipüle eder
+local OldIndex
+OldIndex = hookmetamethod(game, "__index", function(Self, Key)
+    if SilentAimEnabled and not checkcaller() and Self == Mouse and (Key == "Hit" or Key == "Target") then
+        local Target = getClosestPlayer()
+        if Target and Target.Character and Target.Character:FindFirstChild("HumanoidRootPart") then
+            if Key == "Hit" then
+                return Target.Character.HumanoidRootPart.CFrame
+            elseif Key == "Target" then
+                return Target.Character.HumanoidRootPart
+            end
+        end
+    end
+    return OldIndex(Self, Key)
+end)
+
+-- HITBOX DÖNGÜSÜ
 game:GetService("RunService").RenderStepped:Connect(function()
     if HitboxEnabled then
         for _, player in pairs(Players:GetPlayers()) do
@@ -70,11 +103,12 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
+-- MENÜ BUTONLARI
 CombatTab:CreateToggle({
-   Name = "Aimbot",
+   Name = "Silent Aim (Sessiz Nişan)",
    CurrentValue = false,
    Callback = function(Value)
-      AimbotEnabled = Value
+      SilentAimEnabled = Value
    end,
 })
 

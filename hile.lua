@@ -1,26 +1,24 @@
--- En kararlı çalışan Kavo Kütüphanesini çekiyoruz
-local KavoLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Ana Pencereyi Oluştur (Temalar: Midnight, Charcoal, Darken, Blood, Grape vb.)
-local Window = KavoLib.CreateLib("Synder Cheat", "Midnight")
+local Window = Rayfield:CreateWindow({
+   Name = "Synder Cheat",
+   LoadingTitle = "Yükleniyor...",
+   LoadingSubtitle = "by Diwonas",
+   ConfigurationSaving = {
+      Enabled = false
+   }
+})
 
--- SEKMELER (Tabs)
-local CombatTab = Window:NewTab("Combat")
+local CombatTab = Window:CreateTab("Combat", 4483345998)
 
--- BÖLÜMLER (Sections)
-local CombatSection = CombatTab:NewSection("Ana Özellikler")
-
--- HİLE DEĞİŞKENLERİ
-local SilentAimEnabled = false
+local AimbotEnabled = false
 local HitboxEnabled = false
 local HitboxSize = 2
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 
--- EN YAKIN OYUNCUYU BULMA FONKSİYONU
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
@@ -28,7 +26,7 @@ local function getClosestPlayer()
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local pos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
             if onScreen then
-                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
                 if distance < shortestDistance then
                     closestPlayer = player
                     shortestDistance = distance
@@ -39,23 +37,15 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- SILENT AIM SİSTEMİ
-local OldIndex
-OldIndex = hookmetamethod(game, "__index", function(Self, Key)
-    if SilentAimEnabled and not checkcaller() and Self == Mouse and (Key == "Hit" or Key == "Target") then
-        local Target = getClosestPlayer()
-        if Target and Target.Character and Target.Character:FindFirstChild("HumanoidRootPart") then
-            if Key == "Hit" then
-                return Target.Character.HumanoidRootPart.CFrame
-            elseif Key == "Target" then
-                return Target.Character.HumanoidRootPart
-            end
+game:GetService("RunService").RenderStepped:Connect(function()
+    if AimbotEnabled then
+        local target = getClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
         end
     end
-    return OldIndex(Self, Key)
 end)
 
--- HITBOX SİSTEMİ
 game:GetService("RunService").RenderStepped:Connect(function()
     if HitboxEnabled then
         for _, player in pairs(Players:GetPlayers()) do
@@ -80,19 +70,30 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
--- MENÜ BUTONLARI VE ELEMENTLERİ
+CombatTab:CreateToggle({
+   Name = "Aimbot",
+   CurrentValue = false,
+   Callback = function(Value)
+      AimbotEnabled = Value
+   end,
+})
 
--- 1. Silent Aim Toggle
-CombatSection:NewToggle("Silent Aim (Sessiz Nişan)", "Mermileri otomatik en yakın düşmana yönlendirir.", function(state)
-    SilentAimEnabled = state
-end)
+CombatTab:CreateToggle({
+   Name = "Geniş Hitbox",
+   CurrentValue = false,
+   Callback = function(Value)
+      HitboxEnabled = Value
+   end,
+})
 
--- 2. Hitbox Toggle
-CombatSection:NewToggle("Geniş Hitbox", "Düşmanların vurulma alanını büyütür.", function(state)
-    HitboxEnabled = state
-end)
-
--- 3. Hitbox Boyut Slider'ı
-CombatSection:NewSlider("Hitbox Boyutu", "Hitbox büyüklüğünü ayarlar.", 30, 2, function(s) -- Max: 30, Min: 2
-    HitboxSize = s
-end)
+CombatTab:CreateSlider({
+   Name = "Hitbox Boyutu",
+   Min = 2,
+   Max = 30,
+   CurrentValue = 2,
+   Increment = 1,
+   ValueName = "Boyut",
+   Callback = function(Value)
+      HitboxSize = Value
+   end,
+})

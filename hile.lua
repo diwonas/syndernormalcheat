@@ -1,22 +1,16 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- En kararlı çalışan Kavo Kütüphanesini çekiyoruz
+local KavoLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 
+-- Ana Pencereyi Oluştur (Temalar: Midnight, Charcoal, Darken, Blood, Grape vb.)
+local Window = KavoLib.CreateLib("Synder Cheat", "Midnight")
 
-local Window = Rayfield:CreateWindow({
-   Name = "Synder Cheat",
-   LoadingTitle = "Synder Hub Yükleniyor...",
-   LoadingSubtitle = "by Diwonas",
-   ConfigurationSaving = {
-      Enabled = false
-   },
-   Discord = {
-      Enabled = false
-   }
-})
+-- SEKMELER (Tabs)
+local CombatTab = Window:NewTab("Combat")
 
+-- BÖLÜMLER (Sections)
+local CombatSection = CombatTab:NewSection("Ana Özellikler")
 
-local CombatTab = Window:CreateTab("Combat", 4483345998)
-
-
+-- HİLE DEĞİŞKENLERİ
 local SilentAimEnabled = false
 local HitboxEnabled = false
 local HitboxSize = 2
@@ -26,7 +20,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
-
+-- EN YAKIN OYUNCUYU BULMA FONKSİYONU
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
@@ -45,7 +39,7 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-
+-- SILENT AIM SİSTEMİ
 local OldIndex
 OldIndex = hookmetamethod(game, "__index", function(Self, Key)
     if SilentAimEnabled and not checkcaller() and Self == Mouse and (Key == "Hit" or Key == "Target") then
@@ -61,7 +55,7 @@ OldIndex = hookmetamethod(game, "__index", function(Self, Key)
     return OldIndex(Self, Key)
 end)
 
-
+-- HITBOX SİSTEMİ
 game:GetService("RunService").RenderStepped:Connect(function()
     if HitboxEnabled then
         for _, player in pairs(Players:GetPlayers()) do
@@ -86,39 +80,19 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
+-- MENÜ BUTONLARI VE ELEMENTLERİ
 
-CombatTab:CreateToggle({
-   Name = "Silent Aim (Sessiz Nişan)",
-   CurrentValue = false,
-   Callback = function(Value)
-      SilentAimEnabled = Value
-   end,
-})
+-- 1. Silent Aim Toggle
+CombatSection:NewToggle("Silent Aim (Sessiz Nişan)", "Mermileri otomatik en yakın düşmana yönlendirir.", function(state)
+    SilentAimEnabled = state
+end)
 
-CombatTab:CreateToggle({
-   Name = "Geniş Hitbox",
-   CurrentValue = false,
-   Callback = function(Value)
-      HitboxEnabled = Value
-   end,
-})
+-- 2. Hitbox Toggle
+CombatSection:NewToggle("Geniş Hitbox", "Düşmanların vurulma alanını büyütür.", function(state)
+    HitboxEnabled = state
+end)
 
-CombatTab:CreateSlider({
-   Name = "Hitbox Boyutu",
-   Min = 2,
-   Max = 30,
-   CurrentValue = 2,
-   Increment = 1,
-   ValueName = "Boyut",
-   Callback = function(Value)
-      HitboxSize = Value
-   end,
-})
-
-
-Rayfield:Notify({
-   Title = "Synder Hub Aktif!",
-   Content = "Menü başarıyla yüklendi.",
-   Duration = 5,
-   Image = 4483345998,
-})
+-- 3. Hitbox Boyut Slider'ı
+CombatSection:NewSlider("Hitbox Boyutu", "Hitbox büyüklüğünü ayarlar.", 30, 2, function(s) -- Max: 30, Min: 2
+    HitboxSize = s
+end)
